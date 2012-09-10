@@ -8,6 +8,7 @@
 
 import atexit
 import curses
+import os.path
 import subprocess
 import sys
 import json
@@ -26,7 +27,14 @@ def play(filename):
     p.kill()
   _atexit_run.append(kill_it)
 
+def display_bindings(stdscr, data):
+  for k, v in data.iteritems():
+    stdscr.addstr("%s - %s\n" % (k, os.path.basename(v)))
+  stdscr.addstr("\nq - quit\nm - mute all\n")
+  stdscr.refresh()
+
 def app(stdscr, data):
+  display_bindings(stdscr, data)
   while 1:
     c = stdscr.getch()
     if c == ord('q'): break
@@ -43,8 +51,6 @@ def app(stdscr, data):
     except ValueError:
       # Ignore non-ascii key
       continue
-    stdscr.addstr("%s\n" % f)
-    stdscr.refresh()
     play(f)
 
 def main():
