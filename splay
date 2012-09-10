@@ -16,48 +16,50 @@ import json
 _atexit_run = []
 
 def mute_all():
-  global _atexit_run
-  for f in _atexit_run:
-    f()
-  _atexit_run = []
+    global _atexit_run
+    for f in _atexit_run:
+        f()
+    _atexit_run = []
 
 def play(filename):
-  p = subprocess.Popen(['/usr/bin/mplayer', '-really-quiet', filename])
-  def kill_it():
-    p.kill()
-  _atexit_run.append(kill_it)
+    p = subprocess.Popen(['/usr/bin/mplayer', '-really-quiet', filename])
+    def kill_it():
+        p.kill()
+    _atexit_run.append(kill_it)
 
 def display_bindings(stdscr, data):
-  for k, v in data.iteritems():
-    stdscr.addstr("%s - %s\n" % (k, os.path.basename(v)))
-  stdscr.addstr("\nq - quit\nm - mute all\n")
-  stdscr.refresh()
+    for k, v in data.iteritems():
+        stdscr.addstr("%s - %s\n" % (k, os.path.basename(v)))
+    stdscr.addstr("\nq - quit\nm - mute all\n")
+    stdscr.refresh()
 
 def app(stdscr, data):
-  display_bindings(stdscr, data)
-  while 1:
-    c = stdscr.getch()
-    if c == ord('q'): break
-    if c == ord('m'):
-      mute_all()
-      continue
-    try:
-      k = chr(c)
-      f = data[chr(c)]
-    except KeyError:
-      stdscr.addstr("Key '%c' is not bound\n" % c)
-      stdscr.refresh()
-      continue
-    except ValueError:
-      # Ignore non-ascii key
-      continue
-    play(f)
+    display_bindings(stdscr, data)
+    while 1:
+        c = stdscr.getch()
+        if c == ord('q'): break
+        if c == ord('m'):
+            mute_all()
+            continue
+        try:
+            k = chr(c)
+            f = data[chr(c)]
+        except KeyError:
+            stdscr.addstr("Key '%c' is not bound\n" % c)
+            stdscr.refresh()
+            continue
+        except ValueError:
+            # Ignore non-ascii key
+            continue
+        play(f)
 
-def main():
-  with open(sys.argv[1]) as f:
-    data = json.load(f)
-  atexit.register(mute_all)
-  curses.wrapper(app, data)
+def   main():
+    with open(sys.argv[1]) as f:
+        data = json.load(f)
+    atexit.register(mute_all)
+    curses.wrapper(app, data)
 
 if __name__ == '__main__':
-  main()
+    main()
+
+# vim: sw=4 sts=4
