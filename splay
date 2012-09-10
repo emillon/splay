@@ -12,16 +12,27 @@ import subprocess
 import sys
 import json
 
+_atexit_run = []
+
+def mute_all():
+  global _atexit_run
+  for f in _atexit_run:
+    f()
+  _atexit_run = []
+
 def play(filename):
   p = subprocess.Popen(['/usr/bin/mplayer', '-really-quiet', filename])
   def kill_it():
     p.kill()
-  atexit.register(kill_it)
+  _atexit_run.append(kill_it)
 
 def app(stdscr, data):
   while 1:
     c = stdscr.getch()
     if c == ord('q'): break
+    if c == ord('m'):
+      mute_all()
+      continue
     k = chr(c)
     f = data[chr(c)]
     stdscr.addstr("%s\n" % f)
@@ -31,6 +42,7 @@ def app(stdscr, data):
 def main():
   with open(sys.argv[1]) as f:
     data = json.load(f)
+  atexit.register(mute_all)
   curses.wrapper(app, data)
 
 if __name__ == '__main__':

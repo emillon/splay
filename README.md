@@ -13,4 +13,7 @@ Just launch `./splay conf.json`, where `conf.json` has the following format :
     , "e": "rimshot.mp3"
     }
 
-`q` is overridden and will quit the application.
+The following keys are overridden :
+
+  - `q` quits the application.
+  - `m` mutes all playing clips.
