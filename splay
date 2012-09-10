@@ -1,0 +1,11 @@
+#!/usr/bin/env python
+import curses
+
+def app(stdscr):
+  pass
+
+def main():
+  curses.wrapper(app)
+
+if __name__ == '__main__':
+  main()
