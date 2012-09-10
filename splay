@@ -1,17 +1,19 @@
 #!/usr/bin/env python
 import curses
+import sys
+import json
 
-def app(stdscr):
-  begin_x = 20 ; begin_y = 7
-  height = 5 ; width = 40
-  win = curses.newwin(height, width, begin_y, begin_x)
+def app(stdscr, data):
   while 1:
     c = stdscr.getch()
     if c == ord('q'): break
-  pass
+    stdscr.addstr("%s\n" % data[chr(c)])
+    stdscr.refresh()
 
 def main():
-  curses.wrapper(app)
+  with open(sys.argv[1]) as f:
+    data = json.load(f)
+  curses.wrapper(app, data)
 
 if __name__ == '__main__':
   main()
