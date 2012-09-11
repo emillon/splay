@@ -78,8 +78,9 @@ class SPlay:
             except ValueError:
                 # Ignore non-ascii key
                 continue
-            proc = self.play(f)
-            self._active[k] = proc
+            if k not in self._active:
+                proc = self.play(f)
+                self._active[k] = proc
 
 def main():
     with open(sys.argv[1]) as f:
