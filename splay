@@ -17,13 +17,10 @@ import json
 class SPlay:
 
     def __init__(self, data, stdscr):
-        self._atexit_run = []
         self._data = data
         self._stdscr = stdscr
         self._active = {}
-        def mute_on_exit():
-            self.mute()
-        atexit.register(mute_on_exit)
+        atexit.register(self.mute)
         def handler(signum, frame):
             self.handle_sigchld()
         signal.signal(signal.SIGCHLD, handler)
@@ -31,21 +28,19 @@ class SPlay:
     def handle_sigchld(self):
         r = []
         for k, v in self._active.iteritems():
-            if v is not None:
+            v.poll()
+            if v.returncode is not None:
                 r.append(k)
         for k in r:
             del self._active[k]
 
     def mute(self):
-        for f in self._atexit_run:
-            f()
-        self._atexit_run = []
+        for k, v in self._active.iteritems():
+            v.kill()
+        self._active = {}
 
     def play(self, filename):
         p = subprocess.Popen(['/usr/bin/mplayer', '-really-quiet', filename])
-        def kill_it():
-            p.kill()
-        self._atexit_run.append(kill_it)
         return p
 
     def display_bindings(self):
