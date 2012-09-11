@@ -13,51 +13,60 @@ import subprocess
 import sys
 import json
 
-_atexit_run = []
+class SPlay:
 
-def mute_all():
-    global _atexit_run
-    for f in _atexit_run:
-        f()
-    _atexit_run = []
+    def __init__(self, data, stdscr):
+        self._atexit_run = []
+        self._data = data
+        self._stdscr = stdscr
+        def mute_on_exit():
+            self.mute()
+        atexit.register(mute_on_exit)
 
-def play(filename):
-    p = subprocess.Popen(['/usr/bin/mplayer', '-really-quiet', filename])
-    def kill_it():
-        p.kill()
-    _atexit_run.append(kill_it)
+    def mute(self):
+        for f in self._atexit_run:
+            f()
+        self._atexit_run = []
 
-def display_bindings(stdscr, data):
-    for k, v in data.iteritems():
-        stdscr.addstr("%s - %s\n" % (k, os.path.basename(v)))
-    stdscr.addstr("\nq - quit\nm - mute all\n")
-    stdscr.refresh()
+    def play(self, filename):
+        p = subprocess.Popen(['/usr/bin/mplayer', '-really-quiet', filename])
+        def kill_it():
+            p.kill()
+        self._atexit_run.append(kill_it)
 
-def app(stdscr, data):
-    display_bindings(stdscr, data)
-    while 1:
-        c = stdscr.getch()
-        if c == ord('q'): break
-        if c == ord('m'):
-            mute_all()
-            continue
-        try:
-            k = chr(c)
-            f = data[chr(c)]
-        except KeyError:
-            stdscr.addstr("Key '%c' is not bound\n" % c)
-            stdscr.refresh()
-            continue
-        except ValueError:
-            # Ignore non-ascii key
-            continue
-        play(f)
+    def display_bindings(self):
+        for k, v in self._data.iteritems():
+            self._stdscr.addstr("%s - %s\n" % (k, os.path.basename(v)))
+        self._stdscr.addstr("\nq - quit\nm - mute all\n")
+        self._stdscr.refresh()
+
+    def run(self):
+        self.display_bindings()
+        while 1:
+            c = self._stdscr.getch()
+            if c == ord('q'): break
+            if c == ord('m'):
+                self.mute()
+                continue
+            try:
+                k = chr(c)
+                f = self._data[chr(c)]
+            except KeyError:
+                stdscr.addstr("Key '%c' is not bound\n" % c)
+                stdscr.refresh()
+                continue
+            except ValueError:
+                # Ignore non-ascii key
+                continue
+            self.play(f)
 
 def main():
     with open(sys.argv[1]) as f:
         data = json.load(f)
-    atexit.register(mute_all)
-    curses.wrapper(app, data)
+    def run(stdscr):
+        app = SPlay(data, stdscr)
+        app.run()
+    curses.wrapper(run)
 
 if __name__ == '__main__':
     main()
