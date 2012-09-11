@@ -9,6 +9,7 @@
 import atexit
 import curses
 import os.path
+import signal
 import subprocess
 import sys
 import json
@@ -19,9 +20,21 @@ class SPlay:
         self._atexit_run = []
         self._data = data
         self._stdscr = stdscr
+        self._active = {}
         def mute_on_exit():
             self.mute()
         atexit.register(mute_on_exit)
+        def handler(signum, frame):
+            self.handle_sigchld()
+        signal.signal(signal.SIGCHLD, handler)
+
+    def handle_sigchld(self):
+        r = []
+        for k, v in self._active.iteritems():
+            if v is not None:
+                r.append(k)
+        for k in r:
+            del self._active[k]
 
     def mute(self):
         for f in self._atexit_run:
@@ -33,16 +46,23 @@ class SPlay:
         def kill_it():
             p.kill()
         self._atexit_run.append(kill_it)
+        return p
 
     def display_bindings(self):
+        self._stdscr.erase()
         for k, v in self._data.iteritems():
-            self._stdscr.addstr("%s - %s\n" % (k, os.path.basename(v)))
+            if k in self._active:
+                attr = curses.A_REVERSE
+            else:
+                attr = curses.A_NORMAL
+            self._stdscr.addstr(k, attr)
+            self._stdscr.addstr(" - %s\n" % (os.path.basename(v)))
         self._stdscr.addstr("\nq - quit\nm - mute all\n")
         self._stdscr.refresh()
 
     def run(self):
-        self.display_bindings()
         while 1:
+            self.display_bindings()
             c = self._stdscr.getch()
             if c == ord('q'): break
             if c == ord('m'):
@@ -58,7 +78,8 @@ class SPlay:
             except ValueError:
                 # Ignore non-ascii key
                 continue
-            self.play(f)
+            proc = self.play(f)
+            self._active[k] = proc
 
 def main():
     with open(sys.argv[1]) as f:
