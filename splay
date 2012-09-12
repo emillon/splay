@@ -6,6 +6,13 @@
 # can do whatever you want with this stuff. If we meet some day, and you think
 # this stuff is worth it, you can buy me a beer in return.
 
+"""
+SPlay : a barebones sample player.
+
+Create a list of keybindings that map keys to files and fire the app !
+See README.md for a more detailed description.
+"""
+
 import atexit
 import curses
 import os.path
@@ -15,74 +22,110 @@ import sys
 import json
 import time
 
+def play(filename):
+    """
+    Play a clip. This spawns a subprocess, whose handle is returned.
+    """
+    proc = subprocess.Popen(['/usr/bin/mplayer', '-really-quiet', filename])
+    return proc
+
 class SPlay:
+    """
+    The application itself. It is instanciated on a specific curses window and
+    its main loop is executed with the run() method.
+    """
 
     def __init__(self, data, stdscr):
         self._data = data
         self._stdscr = stdscr
         self._active = {}
         atexit.register(self.mute)
-        def handler(signum, frame):
-            self.handle_sigchld()
+        def handler(signum, _frame):
+            """
+            The "real" signal handler, which wraps a call to
+            self.handle_sigchld().
+            """
+            if signum == signal.SIGCHLD:
+                self.handle_sigchld()
         signal.signal(signal.SIGCHLD, handler)
 
     def handle_sigchld(self):
-        r = []
-        for k, v in self._active.iteritems():
-            v.poll()
-            if v.returncode is not None:
-                r.append(k)
-        for k in r:
-            del self._active[k]
+        """
+        Called when a SIGCHLD is caught.
+        Cycle through the list of processes, poll them and remove the terminated
+        ones. This information is used to update the display.
+        """
+        dead_processes = []
+        for key, proc in self._active.iteritems():
+            proc.poll()
+            if proc.returncode is not None:
+                dead_processes.append(key)
+        for key in dead_processes:
+            del self._active[key]
 
     def mute(self):
-        for k, v in self._active.iteritems():
-            v.kill()
+        """
+        Mute all active clips by killing all the subprocesses.
+        """
+        for proc in self._active.itervalues():
+            proc.kill()
         self._active = {}
 
-    def play(self, filename):
-        p = subprocess.Popen(['/usr/bin/mplayer', '-really-quiet', filename])
-        return p
-
     def display_bindings(self):
+        """
+        Display a list of keybindings on the current screen.
+        Depending on their status, they are displayed with a different
+        attribute.
+        """
         self._stdscr.erase()
-        for k, v in self._data.iteritems():
-            if k in self._active:
+        for key, filename in self._data.iteritems():
+            if key in self._active:
                 attr = curses.A_REVERSE
             else:
                 attr = curses.A_NORMAL
-            self._stdscr.addstr(k, attr)
-            self._stdscr.addstr(" - %s\n" % (os.path.basename(v)))
+            self._stdscr.addstr(key, attr)
+            self._stdscr.addstr(" - %s\n" % (os.path.basename(filename)))
         self._stdscr.addstr("\nq - quit\nm - mute all\n")
         self._stdscr.refresh()
 
     def run(self):
+        """
+        Main loop.
+        """
         while 1:
             self.display_bindings()
-            c = self._stdscr.getch()
-            if c == ord('q'): break
-            if c == ord('m'):
+            char = self._stdscr.getch()
+            if char == ord('q'):
+                break
+            if char == ord('m'):
                 self.mute()
                 continue
             try:
-                k = chr(c)
-                f = self._data[chr(c)]
+                key = chr(char)
+                filename = self._data[key]
             except KeyError:
-                self._stdscr.addstr("Key '%c' is not bound\n" % c)
+                self._stdscr.addstr("Key '%c' is not bound\n" % char)
                 self._stdscr.refresh()
                 time.sleep(1)
                 continue
             except ValueError:
                 # Ignore non-ascii key
                 continue
-            if k not in self._active:
-                proc = self.play(f)
-                self._active[k] = proc
+            if key not in self._active:
+                proc = play(filename)
+                self._active[key] = proc
 
 def main():
-    with open(sys.argv[1]) as f:
-        data = json.load(f)
+    """
+    Program entry point : create a curses context, instanciate a new SPlay
+    object and run its main loop.
+    """
+    with open(sys.argv[1]) as datafile:
+        data = json.load(datafile)
     def run(stdscr):
+        """
+        Wrapper around constructor for curses.wrapper().
+        """
         app = SPlay(data, stdscr)
         app.run()
     curses.wrapper(run)
