@@ -13,6 +13,7 @@ import signal
 import subprocess
 import sys
 import json
+import time
 
 class SPlay:
 
@@ -67,8 +68,9 @@ class SPlay:
                 k = chr(c)
                 f = self._data[chr(c)]
             except KeyError:
-                stdscr.addstr("Key '%c' is not bound\n" % c)
-                stdscr.refresh()
+                self._stdscr.addstr("Key '%c' is not bound\n" % c)
+                self._stdscr.refresh()
+                time.sleep(1)
                 continue
             except ValueError:
                 # Ignore non-ascii key
