@@ -22,13 +22,6 @@ import sys
 import json
 import time
 
-def play(filename):
-    """
-    Play a clip. This spawns a subprocess, whose handle is returned.
-    """
-    proc = subprocess.Popen(['/usr/bin/afplay', filename])
-    return proc
-
 class SPlay:
     """
     The application itself. It is instanciated on a specific curses window and
@@ -48,6 +41,10 @@ class SPlay:
             if signum == signal.SIGCHLD:
                 self.handle_sigchld()
         signal.signal(signal.SIGCHLD, handler)
+        if sys.platform in ['linux', 'linux2']:
+            self._player = ['/usr/bin/mplayer', '-really-quiet']
+        elif sys.platform == 'darwin':
+            self._player = ['/usr/bin/afplay']
 
     def handle_sigchld(self):
         """
@@ -70,6 +67,13 @@ class SPlay:
         for proc in self._active.itervalues():
             proc.kill()
         self._active = {}
+
+    def play(self, filename):
+        """
+        Play a clip. This spawns a subprocess, whose handle is returned.
+        """
+        proc = subprocess.Popen(self._player + [filename])
+        return proc
 
     def display_bindings(self):
         """
@@ -112,7 +116,7 @@ class SPlay:
                 # Ignore non-ascii key
                 continue
             if key not in self._active:
-                proc = play(filename)
+                proc = self.play(filename)
                 self._active[key] = proc
 
 def main():
